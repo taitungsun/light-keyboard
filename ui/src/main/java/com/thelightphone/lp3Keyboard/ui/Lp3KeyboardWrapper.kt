@@ -41,12 +41,16 @@ fun Lp3KeyboardWrapper(viewModel: Lp3KeyboardViewModel<*>) {
     val layoutOptions by viewModel.layoutOptionsFlow.collectAsState()
     // Zhuyin candidate bar: only view models that compose expose a host, and it
     // only renders while a composition is active — otherwise this is a no-op.
+    // Stack it above the keyboard in a Column so the IME window grows to include
+    // it (siblings without a layout parent would overlap the top key row).
     val zhuyinHost = viewModel as? ZhuyinComposerHost
     val composerState = zhuyinHost?.composerStateFlow?.collectAsState()?.value
-    if (zhuyinHost != null && composerState != null && composerState.isActive) {
-        CandidateBar(composerState, zhuyinHost::onCandidateSelected)
+    Column(Modifier.fillMaxWidth().background(LocalKeyboardColors.current.background)) {
+        if (zhuyinHost != null && composerState != null && composerState.isActive) {
+            CandidateBar(composerState, zhuyinHost::onCandidateSelected)
+        }
+        Lp3KeyboardWrapper(layout, keyboardOptions, layoutOptions, viewModel, viewModel)
     }
-    Lp3KeyboardWrapper(layout, keyboardOptions, layoutOptions, viewModel, viewModel)
 }
 
 @Composable
