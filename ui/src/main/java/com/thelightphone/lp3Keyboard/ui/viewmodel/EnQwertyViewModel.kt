@@ -15,7 +15,13 @@ import com.thelightphone.lp3Keyboard.ui.layout.LowerCaseLayout
 import com.thelightphone.lp3Keyboard.ui.layout.NumberLayout
 import com.thelightphone.lp3Keyboard.ui.layout.SymbolsLayout
 import com.thelightphone.lp3Keyboard.ui.layout.UpperCaseLayout
+import com.thelightphone.lp3Keyboard.ui.layout.ZhuyinLayout
 import com.thelightphone.lp3Keyboard.ui.layout.extendedCharMapping
+import com.thelightphone.lp3Keyboard.ui.zhuyin.StubCandidateSource
+import com.thelightphone.lp3Keyboard.ui.zhuyin.ZhuyinComposer
+import com.thelightphone.lp3Keyboard.ui.zhuyin.ZhuyinComposerHost
+import com.thelightphone.lp3Keyboard.ui.zhuyin.ZhuyinComposerState
+import com.thelightphone.lp3Keyboard.ui.zhuyin.ZhuyinImeActions
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,11 +48,48 @@ class EnQwertyLp3KeyboardViewModel<SwipeResult>(
             swipeEnabled = false
         )
     )
-) : ViewModel(), Lp3KeyboardViewModel<SwipeResult> {
+) : ViewModel(), Lp3KeyboardViewModel<SwipeResult>, ZhuyinComposerHost {
     var previousLayout: Layout? = null
         private set
 
     private var swipeActive = false
+
+    // --- Zhuyin (Phase 2) --------------------------------------------------
+    // A single composition session per keyboard. Active only while ZhuyinLayout
+    // is showing; the English/number/symbol paths never touch it.
+    private val composer = ZhuyinComposer(StubCandidateSource())
+    private val _composerState = MutableStateFlow(ZhuyinComposerState.EMPTY)
+    override val composerStateFlow: StateFlow<ZhuyinComposerState> = _composerState
+
+    /** Pre-edit/commit round-trip lives in the IME; null when embedded elsewhere. */
+    private val zhuyinIme: ZhuyinImeActions?
+        get() = passedCallback as? ZhuyinImeActions
+
+    /** Push the current buffer to the candidate bar and the IME pre-edit region. */
+    private fun syncComposer() {
+        val snapshot = composer.snapshot()
+        _composerState.value = snapshot
+        zhuyinIme?.onComposingChanged(snapshot.composing)
+    }
+
+    /** Abandon any in-progress composition (used when leaving ZhuyinLayout). */
+    private fun resetComposer() {
+        if (composer.isEmpty) return
+        composer.clear()
+        _composerState.value = ZhuyinComposerState.EMPTY
+        zhuyinIme?.onComposingChanged("")
+    }
+
+    private fun commitCandidate(text: CharSequence) {
+        zhuyinIme?.onCommitCandidate(text)
+        composer.clear()
+        _composerState.value = ZhuyinComposerState.EMPTY
+    }
+
+    override fun onCandidateSelected(candidate: String) {
+        haptic()
+        commitCandidate(candidate)
+    }
 
     private val delegateCallback: Lp3RepeatableKeyboardCallback?
         get() = passedCallback.takeUnless { swipeActive }
@@ -54,6 +97,9 @@ class EnQwertyLp3KeyboardViewModel<SwipeResult>(
     override val layoutFlow: MutableStateFlow<Layout> = MutableStateFlow(initialLayout)
 
     private fun setLayout(layout: Layout) {
+        // Leaving Zhuyin drops any half-built composition rather than stranding
+        // an underlined pre-edit region behind the new layout.
+        if (layout != ZhuyinLayout) resetComposer()
         previousLayout = layoutFlow.value
         layoutOptionsFlow.value = optionsForLayout(layout)
         layoutFlow.value = layout
@@ -108,6 +154,13 @@ class EnQwertyLp3KeyboardViewModel<SwipeResult>(
             cancel()
             return // swallow on key released if held
         }
+        // Zhuyin: bopomofo/tone keys feed the composer (pre-edit + candidates)
+        // instead of committing the glyph directly. Only while ZhuyinLayout is up.
+        if (layoutFlow.value == ZhuyinLayout && ZhuyinComposer.isZhuyinSymbol(code)) {
+            composer.append(code.toChar())
+            syncComposer()
+            return
+        }
         // auto-dismiss when a special key is typed
         if (layoutFlow.value is ExtendedCharKeyboard) {
             setLayout(previousLayout ?: LowerCaseLayout)
@@ -154,8 +207,23 @@ class EnQwertyLp3KeyboardViewModel<SwipeResult>(
                 setLayout(SymbolsLayout)
             }
 
+            SpecialKey.Zhuyin -> {
+                setLayout(ZhuyinLayout)
+            }
+
             SpecialKey.Emojis -> {
                 setLayout(EmojiLayout)
+            }
+
+            SpecialKey.Backspace -> {
+                // While composing, backspace pops the bopomofo buffer; once it's
+                // empty (or we're not composing) fall through to the IME's normal
+                // field backspace.
+                if (layoutFlow.value == ZhuyinLayout && composer.backspace()) {
+                    syncComposer()
+                } else {
+                    consumed = false
+                }
             }
 
             Close -> {
@@ -211,6 +279,17 @@ class EnQwertyLp3KeyboardViewModel<SwipeResult>(
                 heldSpecialKeys[key] = viewModelScope.launch { }
                 showAlphabetLayout()
                 // don't allow repeats since we switched layouts and the original button is gone
+                false
+            }
+
+            SpecialKey.Numbers -> {
+                // Long-press the "123" key to switch into 注音 (bopomofo). The
+                // LP3 bottom row has no width budget for a dedicated visible
+                // toggle, so this is the reachability hook for Phase 2. "EN" on
+                // the Zhuyin layout returns. Occupy the held slot so the release
+                // is swallowed instead of also switching to the number layout.
+                setLayout(ZhuyinLayout)
+                heldSpecialKeys[key] = viewModelScope.launch { }
                 false
             }
 

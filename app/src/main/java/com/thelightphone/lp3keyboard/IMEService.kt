@@ -18,11 +18,13 @@ import com.thelightphone.lp3Keyboard.ui.Lp3KeyboardView
 import com.thelightphone.lp3Keyboard.ui.SpecialKey
 import com.thelightphone.lp3Keyboard.ui.viewmodel.EnQwertyLp3KeyboardViewModel
 import com.thelightphone.lp3Keyboard.ui.viewmodel.Lp3RepeatableKeyboardCallback
+import com.thelightphone.lp3Keyboard.ui.zhuyin.ZhuyinImeActions
 
 class IMEService : LifecycleInputMethodService(),
     ViewModelStoreOwner,
     SavedStateRegistryOwner,
-    Lp3RepeatableKeyboardCallback {
+    Lp3RepeatableKeyboardCallback,
+    ZhuyinImeActions {
 
     private val viewModel: EnQwertyLp3KeyboardViewModel<*> by lazy {
         val factory = object : ViewModelProvider.Factory {
@@ -98,6 +100,24 @@ class IMEService : LifecycleInputMethodService(),
     }
 
     override fun onKeyPressed(code: Int) {
+    }
+
+    // --- ZhuyinImeActions: bopomofo pre-edit / candidate commit -------------
+    override fun onComposingChanged(composing: CharSequence) {
+        val ic = currentInputConnection ?: return
+        if (composing.isEmpty()) {
+            ic.finishComposingText()
+        } else {
+            ic.setComposingText(composing, 1)
+        }
+    }
+
+    override fun onCommitCandidate(text: CharSequence) {
+        val ic = currentInputConnection ?: return
+        // commitText replaces the composing region; finish clears any leftover
+        // pre-edit state so the next syllable starts clean.
+        ic.commitText(text, 1)
+        ic.finishComposingText()
     }
 
     override fun onSubmitWord(word: CharSequence) {

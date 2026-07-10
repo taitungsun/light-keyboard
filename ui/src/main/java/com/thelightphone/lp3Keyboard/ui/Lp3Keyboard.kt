@@ -76,7 +76,8 @@ enum class SpecialKey {
     Submit,
     Close,
     Voice,
-    Return
+    Return,
+    Zhuyin
 }
 
 interface Lp3KeyboardCallback {

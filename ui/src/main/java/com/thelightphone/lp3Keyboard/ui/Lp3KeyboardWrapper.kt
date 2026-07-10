@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.thelightphone.lp3Keyboard.ui.layout.Layout
 import com.thelightphone.lp3Keyboard.ui.layout.UpperCaseLayout
 import com.thelightphone.lp3Keyboard.ui.viewmodel.Lp3KeyboardViewModel
+import com.thelightphone.lp3Keyboard.ui.zhuyin.ZhuyinComposerHost
 import com.thelightphone.lp3Keyboard.ui.viewmodel.defaultEmojis
 
 /*
@@ -38,6 +39,13 @@ fun Lp3KeyboardWrapper(viewModel: Lp3KeyboardViewModel<*>) {
     val layout by viewModel.layoutFlow.collectAsState()
     val keyboardOptions by viewModel.keyboardOptionsFlow.collectAsState()
     val layoutOptions by viewModel.layoutOptionsFlow.collectAsState()
+    // Zhuyin candidate bar: only view models that compose expose a host, and it
+    // only renders while a composition is active — otherwise this is a no-op.
+    val zhuyinHost = viewModel as? ZhuyinComposerHost
+    val composerState = zhuyinHost?.composerStateFlow?.collectAsState()?.value
+    if (zhuyinHost != null && composerState != null && composerState.isActive) {
+        CandidateBar(composerState, zhuyinHost::onCandidateSelected)
+    }
     Lp3KeyboardWrapper(layout, keyboardOptions, layoutOptions, viewModel, viewModel)
 }
 
