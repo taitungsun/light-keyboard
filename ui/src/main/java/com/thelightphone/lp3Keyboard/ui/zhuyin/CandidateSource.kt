@@ -4,11 +4,9 @@ package com.thelightphone.lp3Keyboard.ui.zhuyin
  * Turns a bopomofo reading (a run of ㄅㄆㄇ… symbols plus an optional tone mark)
  * into an ordered list of candidate 漢字 / words, most likely first.
  *
- * This is the seam between the keyboard UI and the dictionary. Phase 2 ships the
- * [StubCandidateSource] below so the composing/candidate pipeline can be built
- * and demoed end-to-end; Phase 3 swaps in a real data-backed implementation
- * (a packed bopomofo→word table, frequency ranking, user history) behind this
- * exact interface without touching the UI or the composer.
+ * The seam between the keyboard UI and the dictionary: [StubCandidateSource] is a
+ * tiny in-memory table for tests/previews, [AssetCandidateSource] is the real
+ * libchewing-backed implementation.
  */
 interface CandidateSource {
     /**

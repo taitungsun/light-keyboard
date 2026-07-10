@@ -54,9 +54,9 @@ class ZhuyinDictionary private constructor(
                     if (s > existing.value) existing.value = s
                 }
             }
-            // Tone-less matches the historical behaviour: stop as soon as we have
-            // enough. Tone-aware needs a wider scan (a low-frequency exact-tone
-            // word may outrank a high-frequency wrong-tone one) but stays bounded.
+            // Tone-less: stop as soon as we have enough. Tone-aware needs a wider
+            // scan (a low-frequency exact-tone word may outrank a high-frequency
+            // wrong-tone one) but stays bounded by SCAN_CAP.
             if (!toneAware) {
                 if (order.size >= limit) break
             } else if (order.size >= SCAN_CAP) {

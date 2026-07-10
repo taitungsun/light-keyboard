@@ -14,18 +14,15 @@ import com.thelightphone.lp3Keyboard.ui.MultiLabelKey
 import com.thelightphone.lp3Keyboard.ui.R
 import com.thelightphone.lp3Keyboard.ui.SpecialKey
 
-// Standard MOE Zhuyin keyboard mapping (the layout used by default on
-// Windows/macOS/most phones' bopomofo IMEs), laid out on the same four
-// QWERTY-shaped rows as EnQwerty.kt so this is muscle-memory-familiar to
-// any Taiwanese typist rather than a novel arrangement.
+// Standard MOE bopomofo layout (the default on most Windows/macOS/phone 注音
+// IMEs), on the same four QWERTY-shaped rows as EnQwerty.kt so it's familiar to
+// Taiwanese typists:
 //   number row (11): ㄅㄉˇˋㄓˊ˙ㄚㄞㄢㄦ
 //   qwertyuiop  (10): ㄆㄊㄍㄐㄔㄗㄧㄛㄟㄣ
 //   asdfghjkl    (9): ㄇㄋㄎㄑㄕㄖㄨㄜㄠ
 //   zxcvbnm+;,./(11): ㄈㄌㄏㄒㄘㄙㄩㄤㄝㄡㄥ
-//
-// Phase 1 skeleton: raw symbol keys only, each commits its bopomofo glyph
-// directly (same commit path as EnQwerty). No composing buffer, no
-// dictionary lookup, no candidate row yet — that's Phase 2.
+// Symbol/tone keys feed the composer (see EnQwertyViewModel) rather than
+// committing directly; the "EN" key returns to the alphabet layout.
 object ZhuyinLayout : Layout {
     override val isRootLayout: Boolean
         get() = true

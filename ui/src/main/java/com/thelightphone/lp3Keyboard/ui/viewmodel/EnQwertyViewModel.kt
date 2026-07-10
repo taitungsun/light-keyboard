@@ -59,7 +59,7 @@ class EnQwertyLp3KeyboardViewModel<SwipeResult>(
 
     private var swipeActive = false
 
-    // --- Zhuyin (Phase 2) --------------------------------------------------
+    // --- Zhuyin composition ------------------------------------------------
     // A single composition session per keyboard. Active only while ZhuyinLayout
     // is showing; the English/number/symbol paths never touch it.
     private val composer = ZhuyinComposer(candidateSource)
@@ -287,11 +287,10 @@ class EnQwertyLp3KeyboardViewModel<SwipeResult>(
             }
 
             SpecialKey.Numbers -> {
-                // Long-press the "123" key to switch into 注音 (bopomofo). The
-                // LP3 bottom row has no width budget for a dedicated visible
-                // toggle, so this is the reachability hook for Phase 2. "EN" on
-                // the Zhuyin layout returns. Occupy the held slot so the release
-                // is swallowed instead of also switching to the number layout.
+                // Long-press "123" to switch into 注音 (bopomofo) — the bottom
+                // row has no width budget for a dedicated toggle; "EN" on the
+                // Zhuyin layout returns. Occupy the held slot so the release is
+                // swallowed instead of also switching to the number layout.
                 setLayout(ZhuyinLayout)
                 heldSpecialKeys[key] = viewModelScope.launch { }
                 false
