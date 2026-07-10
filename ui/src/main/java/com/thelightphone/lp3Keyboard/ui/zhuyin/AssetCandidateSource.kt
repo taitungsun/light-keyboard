@@ -38,19 +38,14 @@ class AssetCandidateSource(
         }
     }
 
-    override fun candidates(reading: String): List<String> {
-        val d = dict ?: return emptyList()
-        val key = ZhuyinDictionary.readingKey(reading)
-        if (key.isEmpty()) return emptyList()
-        return d.lookup(key)
-    }
+    // Pass the raw (still-toned) reading straight through: the dictionary strips
+    // to a key for matching but keeps the tone marks to rank tone-consistent
+    // candidates first.
+    override fun candidates(reading: String): List<String> =
+        dict?.lookup(reading) ?: emptyList()
 
-    override fun candidatesExact(reading: String): List<String> {
-        val d = dict ?: return emptyList()
-        val key = ZhuyinDictionary.readingKey(reading)
-        if (key.isEmpty()) return emptyList()
-        return d.lookupExact(key)
-    }
+    override fun candidatesExact(reading: String): List<String> =
+        dict?.lookupExact(reading) ?: emptyList()
 
     companion object {
         private const val TAG = "AssetCandidateSource"

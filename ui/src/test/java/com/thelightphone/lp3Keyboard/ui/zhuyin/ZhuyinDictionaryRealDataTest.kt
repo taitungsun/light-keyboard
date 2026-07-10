@@ -1,6 +1,7 @@
 package com.thelightphone.lp3Keyboard.ui.zhuyin
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -23,8 +24,9 @@ class ZhuyinDictionaryRealDataTest {
         }
     }
 
-    private fun lookup(buffer: String) =
-        dict!!.lookup(ZhuyinDictionary.readingKey(buffer))
+    // Pass the raw buffer (tones and all) exactly as AssetCandidateSource does,
+    // so tone-aware ranking is exercised end-to-end.
+    private fun lookup(buffer: String) = dict!!.lookup(buffer)
 
     @Test
     fun `real dictionary loads a large key set`() {
@@ -49,20 +51,24 @@ class ZhuyinDictionaryRealDataTest {
     }
 
     @Test
-    fun `tones are ignored so any tone on a syllable still finds the word`() {
-        assumeTrue(dict != null)
-        // Same reading, different (or absent) tone marks → same candidate set.
-        assertEquals(lookup("ㄕ"), lookup("ㄕˋ"))
-        assertTrue("是" in lookup("ㄕ"))
+    fun `an explicit tone reorders candidates without dropping any`() {
+        val d = dict; assumeTrue(d != null)
+        // On the exact ㄕ key (no prefix cap artifacts): tone reorders the very
+        // same set of words, it never filters it.
+        assertEquals(d!!.lookupExact("ㄕ").toSet(), d.lookupExact("ㄕˋ").toSet())
+        // shì → 是 (4th tone) leads; shí → 時/十 (2nd) lead. The two toned
+        // orderings differ from each other.
+        assertEquals("是", d.lookupExact("ㄕˋ").first())
+        val shi2 = d.lookupExact("ㄕˊ")
+        assertTrue("時" in shi2.take(3) || "十" in shi2.take(3))
+        assertNotEquals(d.lookupExact("ㄕˋ"), d.lookupExact("ㄕˊ"))
     }
 
     /** Wraps the real dict in a source so the composer can be driven over it,
-     *  mirroring how [AssetCandidateSource] maps a reading to a key. */
+     *  mirroring how [AssetCandidateSource] passes the raw reading through. */
     private fun realSource(d: ZhuyinDictionary) = object : CandidateSource {
-        override fun candidates(reading: String) =
-            d.lookup(ZhuyinDictionary.readingKey(reading))
-        override fun candidatesExact(reading: String) =
-            d.lookupExact(ZhuyinDictionary.readingKey(reading))
+        override fun candidates(reading: String) = d.lookup(reading)
+        override fun candidatesExact(reading: String) = d.lookupExact(reading)
     }
 
     @Test

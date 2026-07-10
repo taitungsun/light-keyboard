@@ -86,4 +86,56 @@ class ZhuyinDictionaryTest {
         assertEquals(listOf("你"), d.lookup("ㄋㄧ"))
         assertEquals(listOf("是"), d.lookup("ㄕ"))
     }
+
+    // --- tone-aware ranking (3-column fixture: key \t words \t sig-sets) --------
+
+    // 媽=1st, 馬=3rd, 嗎=1st/3rd/neutral, 罵=4th; freq order 媽 馬 嗎 罵.
+    private val toned = ZhuyinDictionary.fromLines(
+        sequenceOf(
+            "ㄇㄚ\t媽 馬 嗎 罵\t1 3 0/1/3 4",
+            "ㄋㄧㄏㄠ\t你好 妳好\t33 33",
+        ),
+    )
+
+    @Test
+    fun `no tone mark keeps plain frequency order`() {
+        assertEquals(listOf("媽", "馬", "嗎", "罵"), toned.lookup("ㄇㄚ"))
+    }
+
+    @Test
+    fun `third tone floats tone-matching words to the front`() {
+        // ㄇㄚˇ ⇒ 馬 (3) and 嗎 (has 3) first, then the non-matching 媽 罵 in order.
+        assertEquals(listOf("馬", "嗎", "媽", "罵"), toned.lookup("ㄇㄚˇ"))
+    }
+
+    @Test
+    fun `fourth tone floats a different word to the front`() {
+        assertEquals(listOf("罵", "媽", "馬", "嗎"), toned.lookup("ㄇㄚˋ"))
+    }
+
+    @Test
+    fun `tone reorders but never drops candidates`() {
+        assertEquals(
+            toned.lookup("ㄇㄚ").sorted(),
+            toned.lookup("ㄇㄚˇ").sorted(),
+        )
+    }
+
+    @Test
+    fun `lookupExact is tone-aware too`() {
+        assertEquals(listOf("馬", "嗎", "媽", "罵"), toned.lookupExact("ㄇㄚˇ"))
+        assertEquals(listOf("媽", "馬", "嗎", "罵"), toned.lookupExact("ㄇㄚ"))
+    }
+
+    @Test
+    fun `multi-syllable tone pattern matches a phrase`() {
+        assertEquals(listOf("你好", "妳好"), toned.lookupExact("ㄋㄧˇㄏㄠˇ"))
+    }
+
+    @Test
+    fun `prefix query scores a longer word by its leading syllable tone`() {
+        // ㄇㄚ has no ㄇㄚ… phrase extension here, so use ㄋㄧㄏㄠ: a 3rd-tone first
+        // syllable ㄋㄧˇ prefix-matches the phrase whose first syllable is 3rd.
+        assertTrue("你好" in toned.lookup("ㄋㄧˇ"))
+    }
 }

@@ -4,12 +4,13 @@
 data (詞庫 `tsi.csv` + 字庫 `word.csv`).
 
 - Upstream: https://github.com/chewing/libchewing-data (`dict/chewing/`)
-- Copyright (c) libchewing Core Team
+- Copyright (c) 2025 libchewing Core Team
 - License: **LGPL-2.1-or-later**
-- Data revision: tsi 2025.11.17, word 2026.3.20
+- Data revision: `main` re-fetched 2026-07-11 (tsi 160,417 / word 26,059 rows)
 
 The derivation (parse CSV → strip tone marks/spaces to a lookup key → rank words
-by frequency → gzip) is performed by `ui/tools/build_zhuyin_dict.py`; re-run that
+by frequency → record each word's per-syllable tone-signature set for tone-aware
+ranking → gzip) is performed by `ui/tools/build_zhuyin_dict.py`; re-run that
 script against a fresh checkout of the upstream CSVs to regenerate this file.
 
 This is bundled data, not linked code. Note that light-keyboard itself is MIT;
