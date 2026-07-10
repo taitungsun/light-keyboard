@@ -17,6 +17,7 @@ import com.thelightphone.lp3Keyboard.ui.layout.SymbolsLayout
 import com.thelightphone.lp3Keyboard.ui.layout.UpperCaseLayout
 import com.thelightphone.lp3Keyboard.ui.layout.ZhuyinLayout
 import com.thelightphone.lp3Keyboard.ui.layout.extendedCharMapping
+import com.thelightphone.lp3Keyboard.ui.zhuyin.CandidateSource
 import com.thelightphone.lp3Keyboard.ui.zhuyin.StubCandidateSource
 import com.thelightphone.lp3Keyboard.ui.zhuyin.ZhuyinComposer
 import com.thelightphone.lp3Keyboard.ui.zhuyin.ZhuyinComposerHost
@@ -33,6 +34,9 @@ class EnQwertyLp3KeyboardViewModel<SwipeResult>(
     private val passedCallback: Lp3RepeatableKeyboardCallback,
     private val swipeCallback: Lp3KeyboardSwipeCallback<SwipeResult>,
     private val haptic: () -> Unit = {},
+    // Backs Zhuyin candidate lookup. Defaults to the tiny stub so previews/tests
+    // need no assets; the IME injects the asset-backed source.
+    candidateSource: CandidateSource = StubCandidateSource(),
     initialLayout: Layout = LowerCaseLayout,
     private val optionsForLayout: (Layout) -> LayoutOptions = {
         LayoutOptions(
@@ -57,7 +61,7 @@ class EnQwertyLp3KeyboardViewModel<SwipeResult>(
     // --- Zhuyin (Phase 2) --------------------------------------------------
     // A single composition session per keyboard. Active only while ZhuyinLayout
     // is showing; the English/number/symbol paths never touch it.
-    private val composer = ZhuyinComposer(StubCandidateSource())
+    private val composer = ZhuyinComposer(candidateSource)
     private val _composerState = MutableStateFlow(ZhuyinComposerState.EMPTY)
     override val composerStateFlow: StateFlow<ZhuyinComposerState> = _composerState
 

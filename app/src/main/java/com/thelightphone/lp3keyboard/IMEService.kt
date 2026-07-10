@@ -18,6 +18,7 @@ import com.thelightphone.lp3Keyboard.ui.Lp3KeyboardView
 import com.thelightphone.lp3Keyboard.ui.SpecialKey
 import com.thelightphone.lp3Keyboard.ui.viewmodel.EnQwertyLp3KeyboardViewModel
 import com.thelightphone.lp3Keyboard.ui.viewmodel.Lp3RepeatableKeyboardCallback
+import com.thelightphone.lp3Keyboard.ui.zhuyin.AssetCandidateSource
 import com.thelightphone.lp3Keyboard.ui.zhuyin.ZhuyinImeActions
 
 class IMEService : LifecycleInputMethodService(),
@@ -34,7 +35,8 @@ class IMEService : LifecycleInputMethodService(),
                 return EnQwertyLp3KeyboardViewModel(
                     this@IMEService,
                     dummySwipeCallback,
-                    ::tick
+                    ::tick,
+                    candidateSource = AssetCandidateSource(this@IMEService)
                 ) as T
             }
         }
