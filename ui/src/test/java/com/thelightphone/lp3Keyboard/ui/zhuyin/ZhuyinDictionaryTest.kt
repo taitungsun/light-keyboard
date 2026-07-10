@@ -36,6 +36,24 @@ class ZhuyinDictionaryTest {
     }
 
     @Test
+    fun `lookupExact ignores longer-key extensions`() {
+        // Prefix lookup pulls in 你好/你們; exact must not.
+        assertEquals(listOf("你", "妳", "泥", "尼"), dict.lookupExact("ㄋㄧ"))
+        assertTrue("你好" !in dict.lookupExact("ㄋㄧ"))
+    }
+
+    @Test
+    fun `lookupExact on a full phrase key still resolves`() {
+        assertEquals(listOf("你好", "妳好"), dict.lookupExact("ㄋㄧㄏㄠ"))
+    }
+
+    @Test
+    fun `lookupExact miss returns nothing`() {
+        assertTrue(dict.lookupExact("ㄋㄧㄏ").isEmpty()) // partial, not a key
+        assertTrue(dict.lookupExact("").isEmpty())
+    }
+
+    @Test
     fun `limit caps the result count`() {
         assertEquals(2, dict.lookup("ㄋㄧ", limit = 2).size)
     }

@@ -19,6 +19,7 @@ import com.thelightphone.lp3Keyboard.ui.layout.ZhuyinLayout
 import com.thelightphone.lp3Keyboard.ui.layout.extendedCharMapping
 import com.thelightphone.lp3Keyboard.ui.zhuyin.CandidateSource
 import com.thelightphone.lp3Keyboard.ui.zhuyin.StubCandidateSource
+import com.thelightphone.lp3Keyboard.ui.zhuyin.ZhuyinCandidate
 import com.thelightphone.lp3Keyboard.ui.zhuyin.ZhuyinComposer
 import com.thelightphone.lp3Keyboard.ui.zhuyin.ZhuyinComposerHost
 import com.thelightphone.lp3Keyboard.ui.zhuyin.ZhuyinComposerState
@@ -84,15 +85,14 @@ class EnQwertyLp3KeyboardViewModel<SwipeResult>(
         zhuyinIme?.onComposingChanged("")
     }
 
-    private fun commitCandidate(text: CharSequence) {
-        zhuyinIme?.onCommitCandidate(text)
-        composer.clear()
-        _composerState.value = ZhuyinComposerState.EMPTY
-    }
-
-    override fun onCandidateSelected(candidate: String) {
+    override fun onCandidateSelected(candidate: ZhuyinCandidate) {
         haptic()
-        commitCandidate(candidate)
+        zhuyinIme?.onCommitCandidate(candidate.text)
+        // Consume only the reading this candidate covered; any trailing syllables
+        // stay composing so the user can keep picking (你 then 好, not 你好好).
+        val next = composer.commit(candidate.consumed)
+        _composerState.value = next
+        zhuyinIme?.onComposingChanged(next.composing)
     }
 
     private val delegateCallback: Lp3RepeatableKeyboardCallback?

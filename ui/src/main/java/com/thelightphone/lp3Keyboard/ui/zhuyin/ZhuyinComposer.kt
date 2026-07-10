@@ -3,19 +3,36 @@ package com.thelightphone.lp3Keyboard.ui.zhuyin
 import kotlinx.coroutines.flow.StateFlow
 
 /**
+ * A single tappable candidate: the [text] to commit and how many characters of
+ * the raw composing buffer picking it consumes ([consumed]). For a single
+ * syllable that's the whole buffer; for a segmented multi-syllable buffer a
+ * first-syllable candidate consumes only that syllable and leaves the rest
+ * composing, which is what lets the user build phrases the dictionary doesn't
+ * know by committing one reading at a time.
+ */
+data class ZhuyinCandidate(val text: String, val consumed: Int)
+
+/**
  * Immutable snapshot the UI renders: the raw bopomofo the user is building
  * ([composing], shown as underlined pre-edit text in the field) and the ranked
  * [candidates] for it (shown in the candidate bar).
  */
 data class ZhuyinComposerState(
     val composing: String,
-    val candidates: List<String>,
+    val candidates: List<ZhuyinCandidate>,
 ) {
     /** Whether a composition is in progress — drives whether the bar shows. */
     val isActive: Boolean get() = composing.isNotEmpty()
 
     companion object {
         val EMPTY = ZhuyinComposerState("", emptyList())
+
+        /**
+         * Preview/test helper: build a state whose candidates each consume the
+         * whole [composing] buffer (the common single-syllable case).
+         */
+        fun of(composing: String, texts: List<String>): ZhuyinComposerState =
+            ZhuyinComposerState(composing, texts.map { ZhuyinCandidate(it, composing.length) })
     }
 }
 
@@ -24,9 +41,11 @@ data class ZhuyinComposerState(
  * [CandidateSource]. Pure logic, no Compose / no Android — so it unit-tests
  * cleanly and the view model can own one per keyboard session.
  *
- * Phase 2 keeps the whole buffer as one flat run of symbols and hands it to the
- * source verbatim. Real syllable segmentation (splitting "ㄋㄧˇㄏㄠˇ" into
- * 你/好 as two syllables, committing left-to-right) is Phase 3 — see [append].
+ * The buffer is one flat run of symbols, but [snapshot] segments it (via
+ * [ZhuyinSyllable]) so a multi-syllable buffer offers both the whole-buffer
+ * phrase and shorter prefixes down to the first syllable. Committing a candidate
+ * consumes only its reading and leaves the remainder composing (see [commit]),
+ * so phrases can be built one syllable at a time.
  */
 class ZhuyinComposer(private val source: CandidateSource) {
     private val buffer = StringBuilder()
@@ -37,10 +56,7 @@ class ZhuyinComposer(private val source: CandidateSource) {
     /**
      * Append one bopomofo symbol or tone mark. Callers gate on
      * [isZhuyinSymbol]; anything else should be committed directly, not routed
-     * here.
-     *
-     * TODO(phase3): once a tone mark lands, a syllable is complete — segment it
-     * off so multi-character input builds a phrase instead of one long reading.
+     * here. Segmentation happens lazily in [snapshot], so append stays trivial.
      */
     fun append(symbol: Char) {
         buffer.append(symbol)
@@ -58,11 +74,49 @@ class ZhuyinComposer(private val source: CandidateSource) {
         buffer.setLength(0)
     }
 
-    /** Current snapshot: buffer text + candidates (empty buffer ⇒ no lookup). */
+    /**
+     * Drop the first [consumed] characters of the buffer (the reading a chosen
+     * candidate covered) and return the resulting snapshot, so any trailing
+     * syllables stay composing for the next pick. [consumed] is clamped to the
+     * buffer length.
+     */
+    fun commit(consumed: Int): ZhuyinComposerState {
+        buffer.delete(0, consumed.coerceIn(0, buffer.length))
+        return snapshot()
+    }
+
+    /**
+     * Current snapshot: buffer text + candidates (empty buffer ⇒ no lookup).
+     *
+     * A single syllable (or a still-incomplete one) uses prefix lookup, so
+     * partially-typed readings and short-phrase predictions still surface, and
+     * every candidate consumes the whole buffer. Once the buffer holds more than
+     * one syllable it's segmented: the whole-buffer phrase comes first (exact,
+     * so an over-long phrase can't sneak in), then each shorter prefix down to
+     * the first syllable, each tagged with exactly how much it consumes.
+     */
     fun snapshot(): ZhuyinComposerState {
         val reading = buffer.toString()
         if (reading.isEmpty()) return ZhuyinComposerState.EMPTY
-        return ZhuyinComposerState(reading, source.candidates(reading))
+
+        val segments = ZhuyinSyllable.segment(reading)
+        if (segments.size <= 1) {
+            val cands = source.candidates(reading).map { ZhuyinCandidate(it, reading.length) }
+            return ZhuyinComposerState(reading, cands)
+        }
+
+        // Multi-syllable: whole buffer first, then shrinking prefixes so the user
+        // can commit a leading phrase/char and keep the rest. De-dupe by text,
+        // first (longest) occurrence winning.
+        val byText = LinkedHashMap<String, ZhuyinCandidate>()
+        for (k in segments.size downTo 1) {
+            val prefix = segments.subList(0, k).joinToString("")
+            val consumed = prefix.length
+            for (word in source.candidatesExact(prefix)) {
+                byText.getOrPut(word) { ZhuyinCandidate(word, consumed) }
+            }
+        }
+        return ZhuyinComposerState(reading, byText.values.toList())
     }
 
     companion object {
@@ -91,7 +145,7 @@ interface ZhuyinComposerHost {
     val composerStateFlow: StateFlow<ZhuyinComposerState>
 
     /** User tapped a candidate in the bar. */
-    fun onCandidateSelected(candidate: String)
+    fun onCandidateSelected(candidate: ZhuyinCandidate)
 }
 
 /**

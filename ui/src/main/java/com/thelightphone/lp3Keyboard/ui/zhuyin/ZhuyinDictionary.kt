@@ -38,6 +38,20 @@ class ZhuyinDictionary private constructor(
         return out.toList()
     }
 
+    /**
+     * Candidates whose key is **exactly** [query] (tone/space-stripped by the
+     * caller), best-first, capped at [limit]. Unlike [lookup] this never pulls in
+     * words from longer keys, so a caller that has committed a reading boundary
+     * (e.g. one segmented syllable) never over-consumes into a longer phrase.
+     */
+    fun lookupExact(query: String, limit: Int = DEFAULT_LIMIT): List<String> {
+        if (query.isEmpty() || keys.isEmpty()) return emptyList()
+        val i = lowerBound(query)
+        if (i >= keys.size || keys[i] != query) return emptyList()
+        val words = values[i]
+        return if (words.size <= limit) words.toList() else words.take(limit)
+    }
+
     /** First index whose key is >= [q]; keys.size if none. */
     private fun lowerBound(q: String): Int {
         var lo = 0

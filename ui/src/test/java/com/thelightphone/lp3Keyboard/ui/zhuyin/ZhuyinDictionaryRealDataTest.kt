@@ -55,4 +55,33 @@ class ZhuyinDictionaryRealDataTest {
         assertEquals(lookup("ㄕ"), lookup("ㄕˋ"))
         assertTrue("是" in lookup("ㄕ"))
     }
+
+    /** Wraps the real dict in a source so the composer can be driven over it,
+     *  mirroring how [AssetCandidateSource] maps a reading to a key. */
+    private fun realSource(d: ZhuyinDictionary) = object : CandidateSource {
+        override fun candidates(reading: String) =
+            d.lookup(ZhuyinDictionary.readingKey(reading))
+        override fun candidatesExact(reading: String) =
+            d.lookupExact(ZhuyinDictionary.readingKey(reading))
+    }
+
+    @Test
+    fun `composer segments a real phrase into whole-phrase and first-syllable picks`() {
+        val d = dict; assumeTrue(d != null)
+        val c = ZhuyinComposer(realSource(d!!))
+        "ㄋㄧˇㄏㄠˇ".forEach { c.append(it) } // 你好
+
+        val cands = c.snapshot().candidates
+        // Whole-buffer phrase 你好 present and consuming the whole 6-char buffer…
+        val phrase = cands.first { it.text == "你好" }
+        assertEquals(6, phrase.consumed)
+        // …and the first syllable 你 present, consuming only its 3 chars.
+        val you = cands.first { it.text == "你" }
+        assertEquals(3, you.consumed)
+
+        // Committing 你 leaves 好 composing, which then resolves 好.
+        val after = c.commit(you.consumed)
+        assertEquals("ㄏㄠˇ", after.composing)
+        assertTrue("好" in after.candidates.map { it.text })
+    }
 }

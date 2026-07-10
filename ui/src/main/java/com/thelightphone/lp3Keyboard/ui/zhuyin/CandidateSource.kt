@@ -17,6 +17,17 @@ interface CandidateSource {
      * @return candidates ordered best-first, or empty if nothing matches.
      */
     fun candidates(reading: String): List<String>
+
+    /**
+     * Candidates whose reading is *exactly* [reading] — no prefix extensions.
+     * The composer uses this once it has a firm syllable boundary (segmentation),
+     * so committing one syllable of a longer buffer never pulls in a phrase that
+     * would consume characters the user hasn't accounted for.
+     *
+     * Default reuses [candidates] for sources that don't distinguish the two
+     * (the exactness only matters for the real, phrase-bearing dictionary).
+     */
+    fun candidatesExact(reading: String): List<String> = candidates(reading)
 }
 
 /**
@@ -47,12 +58,19 @@ class StubCandidateSource(
             .toList()
     }
 
+    override fun candidatesExact(reading: String): List<String> =
+        table[reading].orEmpty().take(limit)
+
     companion object {
         /** Tiny demo set. Keys are full readings incl. tone mark (˙ˇˊˋ; 1st tone bare). */
         val DEFAULT_TABLE: Map<String, List<String>> = mapOf(
             "ㄋㄧˇ" to listOf("你", "妳"),
             "ㄏㄠˇ" to listOf("好"),
             "ㄏㄠ" to listOf("蒿"),
+            // A couple of multi-syllable phrases so segmentation has something to
+            // resolve (toned and toneless, matching how the buffer may arrive).
+            "ㄋㄧˇㄏㄠˇ" to listOf("你好"),
+            "ㄋㄧㄏㄠ" to listOf("你好"),
             "ㄨㄛˇ" to listOf("我"),
             "ㄇㄣ˙" to listOf("們"),
             "ㄇㄣ" to listOf("門", "悶"),

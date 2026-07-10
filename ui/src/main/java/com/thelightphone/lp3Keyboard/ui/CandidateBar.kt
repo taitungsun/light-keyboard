@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.thelightphone.lp3Keyboard.ui.zhuyin.ZhuyinCandidate
 import com.thelightphone.lp3Keyboard.ui.zhuyin.ZhuyinComposerState
 
 /** Height of the candidate strip that sits directly above the key rows. */
@@ -37,7 +38,7 @@ const val CANDIDATE_BAR_HEIGHT_DP = 40
 @Composable
 fun CandidateBar(
     state: ZhuyinComposerState,
-    onCandidate: (String) -> Unit,
+    onCandidate: (ZhuyinCandidate) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalKeyboardColors.current
@@ -80,7 +81,7 @@ fun CandidateBar(
 }
 
 @Composable
-private fun CandidateChip(candidate: String, onCandidate: (String) -> Unit) {
+private fun CandidateChip(candidate: ZhuyinCandidate, onCandidate: (ZhuyinCandidate) -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxHeight()
@@ -89,7 +90,7 @@ private fun CandidateChip(candidate: String, onCandidate: (String) -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = candidate,
+            text = candidate.text,
             color = LocalKeyboardColors.current.foreground,
             // CJK glyphs aren't in Akkurat; let the platform font handle them.
             fontFamily = FontFamily.Default,
@@ -103,7 +104,7 @@ private fun CandidateChip(candidate: String, onCandidate: (String) -> Unit) {
 private fun CandidateBarDarkPreview() {
     Lp3KeyboardTheme(DarkKeyboardColors) {
         CandidateBar(
-            state = ZhuyinComposerState("ㄕˋ", listOf("是", "事", "世", "市", "示", "式")),
+            state = ZhuyinComposerState.of("ㄕˋ", listOf("是", "事", "世", "市", "示", "式")),
             onCandidate = {},
         )
     }
@@ -114,7 +115,7 @@ private fun CandidateBarDarkPreview() {
 private fun CandidateBarLightPreview() {
     Lp3KeyboardTheme(LightKeyboardColors) {
         CandidateBar(
-            state = ZhuyinComposerState("ㄋㄧˇ", listOf("你", "妳")),
+            state = ZhuyinComposerState.of("ㄋㄧˇ", listOf("你", "妳")),
             onCandidate = {},
         )
     }

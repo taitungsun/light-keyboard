@@ -45,6 +45,13 @@ class AssetCandidateSource(
         return d.lookup(key)
     }
 
+    override fun candidatesExact(reading: String): List<String> {
+        val d = dict ?: return emptyList()
+        val key = ZhuyinDictionary.readingKey(reading)
+        if (key.isEmpty()) return emptyList()
+        return d.lookupExact(key)
+    }
+
     companion object {
         private const val TAG = "AssetCandidateSource"
         // We commit the dictionary gzipped (…dict.gz, ~1 MB) to keep the repo small,
