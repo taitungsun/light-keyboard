@@ -4,16 +4,16 @@ import com.thelightphone.lp3Keyboard.ui.KeyboardOptions
 import com.thelightphone.lp3Keyboard.ui.LayoutOptions
 import com.thelightphone.lp3Keyboard.ui.Lp3KeyboardSwipeCallback
 import com.thelightphone.lp3Keyboard.ui.SpecialKey
+import com.thelightphone.lp3Keyboard.ui.composer.ComposerCandidate
+import com.thelightphone.lp3Keyboard.ui.composer.ComposerHost
+import com.thelightphone.lp3Keyboard.ui.composer.ComposerState
+import com.thelightphone.lp3Keyboard.ui.composer.ImeComposingActions
 import com.thelightphone.lp3Keyboard.ui.layout.EnQwerty
 import com.thelightphone.lp3Keyboard.ui.layout.Layout
 import com.thelightphone.lp3Keyboard.ui.layout.ZhuyinLayout
 import com.thelightphone.lp3Keyboard.ui.zhuyin.CandidateSource
 import com.thelightphone.lp3Keyboard.ui.zhuyin.StubCandidateSource
-import com.thelightphone.lp3Keyboard.ui.zhuyin.ZhuyinCandidate
 import com.thelightphone.lp3Keyboard.ui.zhuyin.ZhuyinComposer
-import com.thelightphone.lp3Keyboard.ui.zhuyin.ZhuyinComposerHost
-import com.thelightphone.lp3Keyboard.ui.zhuyin.ZhuyinComposerState
-import com.thelightphone.lp3Keyboard.ui.zhuyin.ZhuyinImeActions
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -62,29 +62,29 @@ class ZhuyinLp3KeyboardViewModel<SwipeResult>(
     lowerCaseLayout = EnQwerty.LowerCaseLayout,
     upperCaseLayout = EnQwerty.UpperCaseLayout,
     capsLockedLayout = EnQwerty.CapsLockedLayout,
-), ZhuyinComposerHost {
+), ComposerHost {
 
     private val composer = ZhuyinComposer(candidateSource)
-    private val _composerState = MutableStateFlow(ZhuyinComposerState.EMPTY)
-    override val composerStateFlow: StateFlow<ZhuyinComposerState> = _composerState
+    private val _composerState = MutableStateFlow(ComposerState.EMPTY)
+    override val composerStateFlow: StateFlow<ComposerState> = _composerState
 
     /** Pre-edit/commit round-trip lives in the IME; null when embedded elsewhere. */
-    private val zhuyinIme: ZhuyinImeActions?
-        get() = passedCallback as? ZhuyinImeActions
+    private val imeActions: ImeComposingActions?
+        get() = passedCallback as? ImeComposingActions
 
     /** Push the current buffer to the candidate bar and the IME pre-edit region. */
     private fun syncComposer() {
         val snapshot = composer.snapshot()
         _composerState.value = snapshot
-        zhuyinIme?.onComposingChanged(snapshot.composing)
+        imeActions?.onComposingChanged(snapshot.composing)
     }
 
     /** Abandon any in-progress composition (used when leaving [ZhuyinLayout]). */
     private fun resetComposer() {
         if (composer.isEmpty) return
         composer.clear()
-        _composerState.value = ZhuyinComposerState.EMPTY
-        zhuyinIme?.onComposingChanged("")
+        _composerState.value = ComposerState.EMPTY
+        imeActions?.onComposingChanged("")
     }
 
     override fun setLayout(layout: Layout) {
@@ -94,14 +94,14 @@ class ZhuyinLp3KeyboardViewModel<SwipeResult>(
         super.setLayout(layout)
     }
 
-    override fun onCandidateSelected(candidate: ZhuyinCandidate) {
+    override fun onCandidateSelected(candidate: ComposerCandidate) {
         haptic()
-        zhuyinIme?.onCommitCandidate(candidate.text)
+        imeActions?.onCommitCandidate(candidate.text)
         // Consume only the reading this candidate covered; any trailing syllables
         // stay composing so the user can keep picking (你 then 好, not 你好好).
         val next = composer.commit(candidate.consumed)
         _composerState.value = next
-        zhuyinIme?.onComposingChanged(next.composing)
+        imeActions?.onComposingChanged(next.composing)
     }
 
     override fun onKeyReleased(code: Int) {

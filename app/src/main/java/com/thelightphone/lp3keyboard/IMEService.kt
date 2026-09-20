@@ -18,17 +18,17 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.thelightphone.lp3Keyboard.ui.Lp3KeyboardSwipeCallback
 import com.thelightphone.lp3Keyboard.ui.Lp3KeyboardView
 import com.thelightphone.lp3Keyboard.ui.SpecialKey
+import com.thelightphone.lp3Keyboard.ui.composer.ImeComposingActions
 import com.thelightphone.lp3Keyboard.ui.layout.LayoutRegistryItem
 import com.thelightphone.lp3Keyboard.ui.layout.buildRootViewModel
 import com.thelightphone.lp3Keyboard.ui.viewmodel.Lp3KeyboardViewModel
 import com.thelightphone.lp3Keyboard.ui.viewmodel.Lp3RepeatableKeyboardCallback
-import com.thelightphone.lp3Keyboard.ui.zhuyin.ZhuyinImeActions
 
 class IMEService : LifecycleInputMethodService(),
     ViewModelStoreOwner,
     SavedStateRegistryOwner,
     Lp3RepeatableKeyboardCallback,
-    ZhuyinImeActions {
+    ImeComposingActions {
 
     private var renderedLayout: LayoutRegistryItem? = null
     private var viewModel: Lp3KeyboardViewModel<*>? = null
@@ -145,7 +145,7 @@ class IMEService : LifecycleInputMethodService(),
     override fun onKeyPressed(code: Int) {
     }
 
-    // --- ZhuyinImeActions: bopomofo pre-edit / candidate commit -------------
+    // --- ImeComposingActions: pre-edit / candidate commit ------------------
     override fun onComposingChanged(composing: CharSequence) {
         val ic = currentInputConnection ?: return
         if (composing.isEmpty()) {

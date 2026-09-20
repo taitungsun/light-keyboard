@@ -1,11 +1,11 @@
 package com.thelightphone.lp3Keyboard.ui
 
+import com.thelightphone.lp3Keyboard.ui.composer.ImeComposingActions
 import com.thelightphone.lp3Keyboard.ui.layout.EnQwerty
 import com.thelightphone.lp3Keyboard.ui.layout.EnShared
 import com.thelightphone.lp3Keyboard.ui.layout.ZhuyinLayout
 import com.thelightphone.lp3Keyboard.ui.viewmodel.Lp3RepeatableKeyboardCallback
 import com.thelightphone.lp3Keyboard.ui.viewmodel.ZhuyinLp3KeyboardViewModel
-import com.thelightphone.lp3Keyboard.ui.zhuyin.ZhuyinImeActions
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -29,7 +29,7 @@ import org.junit.Test
 class ZhuyinViewModelTest {
 
     /** Records what the IME would have been told to do. */
-    private class FakeIme : Lp3RepeatableKeyboardCallback, ZhuyinImeActions {
+    private class FakeIme : Lp3RepeatableKeyboardCallback, ImeComposingActions {
         val committed = mutableListOf<CharSequence>()
         val composing = mutableListOf<CharSequence>()
         val released = mutableListOf<Int>()

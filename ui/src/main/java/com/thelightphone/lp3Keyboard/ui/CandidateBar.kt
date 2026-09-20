@@ -20,25 +20,28 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.thelightphone.lp3Keyboard.ui.zhuyin.ZhuyinCandidate
-import com.thelightphone.lp3Keyboard.ui.zhuyin.ZhuyinComposerState
+import com.thelightphone.lp3Keyboard.ui.composer.ComposerCandidate
+import com.thelightphone.lp3Keyboard.ui.composer.ComposerState
 
 /** Height of the candidate strip that sits directly above the key rows. */
 const val CANDIDATE_BAR_HEIGHT_DP = 40
 
 /**
- * The Phase-2 candidate bar: a horizontally scrollable strip showing the raw
- * bopomofo the user is composing on the left, then the ranked 漢字 candidates.
+ * The candidate bar: a horizontally scrollable strip showing the raw reading
+ * the user is composing on the left, then the ranked candidates for it.
  * Tapping a candidate reports it via [onCandidate]; the host commits it and
  * clears the composition, which empties [state] and hides the bar again.
  *
- * Rendered by [Lp3KeyboardWrapper] only while [ZhuyinComposerState.isActive], so
+ * Script-agnostic — it renders whatever [ComposerState] it is given, so any
+ * layout with a composing buffer (bopomofo, kana, …) can reuse it as-is.
+ *
+ * Rendered by [Lp3KeyboardWrapper] only while [ComposerState.isActive], so
  * it takes zero vertical space (and never appears) for the English keyboard.
  */
 @Composable
 fun CandidateBar(
-    state: ZhuyinComposerState,
-    onCandidate: (ZhuyinCandidate) -> Unit,
+    state: ComposerState,
+    onCandidate: (ComposerCandidate) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalKeyboardColors.current
@@ -81,7 +84,7 @@ fun CandidateBar(
 }
 
 @Composable
-private fun CandidateChip(candidate: ZhuyinCandidate, onCandidate: (ZhuyinCandidate) -> Unit) {
+private fun CandidateChip(candidate: ComposerCandidate, onCandidate: (ComposerCandidate) -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxHeight()
@@ -104,7 +107,7 @@ private fun CandidateChip(candidate: ZhuyinCandidate, onCandidate: (ZhuyinCandid
 private fun CandidateBarDarkPreview() {
     Lp3KeyboardTheme(DarkKeyboardColors) {
         CandidateBar(
-            state = ZhuyinComposerState.of("ㄕˋ", listOf("是", "事", "世", "市", "示", "式")),
+            state = ComposerState.of("ㄕˋ", listOf("是", "事", "世", "市", "示", "式")),
             onCandidate = {},
         )
     }
@@ -115,7 +118,7 @@ private fun CandidateBarDarkPreview() {
 private fun CandidateBarLightPreview() {
     Lp3KeyboardTheme(LightKeyboardColors) {
         CandidateBar(
-            state = ZhuyinComposerState.of("ㄋㄧˇ", listOf("你", "妳")),
+            state = ComposerState.of("ㄋㄧˇ", listOf("你", "妳")),
             onCandidate = {},
         )
     }

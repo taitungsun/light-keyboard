@@ -1,40 +1,7 @@
 package com.thelightphone.lp3Keyboard.ui.zhuyin
 
-import kotlinx.coroutines.flow.StateFlow
-
-/**
- * A single tappable candidate: the [text] to commit and how many characters of
- * the raw composing buffer picking it consumes ([consumed]). For a single
- * syllable that's the whole buffer; for a segmented multi-syllable buffer a
- * first-syllable candidate consumes only that syllable and leaves the rest
- * composing, which is what lets the user build phrases the dictionary doesn't
- * know by committing one reading at a time.
- */
-data class ZhuyinCandidate(val text: String, val consumed: Int)
-
-/**
- * Immutable snapshot the UI renders: the raw bopomofo the user is building
- * ([composing], shown as underlined pre-edit text in the field) and the ranked
- * [candidates] for it (shown in the candidate bar).
- */
-data class ZhuyinComposerState(
-    val composing: String,
-    val candidates: List<ZhuyinCandidate>,
-) {
-    /** Whether a composition is in progress — drives whether the bar shows. */
-    val isActive: Boolean get() = composing.isNotEmpty()
-
-    companion object {
-        val EMPTY = ZhuyinComposerState("", emptyList())
-
-        /**
-         * Preview/test helper: build a state whose candidates each consume the
-         * whole [composing] buffer (the common single-syllable case).
-         */
-        fun of(composing: String, texts: List<String>): ZhuyinComposerState =
-            ZhuyinComposerState(composing, texts.map { ZhuyinCandidate(it, composing.length) })
-    }
-}
+import com.thelightphone.lp3Keyboard.ui.composer.ComposerCandidate
+import com.thelightphone.lp3Keyboard.ui.composer.ComposerState
 
 /**
  * Holds the in-progress bopomofo buffer and derives candidates from a
@@ -80,7 +47,7 @@ class ZhuyinComposer(private val source: CandidateSource) {
      * syllables stay composing for the next pick. [consumed] is clamped to the
      * buffer length.
      */
-    fun commit(consumed: Int): ZhuyinComposerState {
+    fun commit(consumed: Int): ComposerState {
         buffer.delete(0, consumed.coerceIn(0, buffer.length))
         return snapshot()
     }
@@ -95,28 +62,28 @@ class ZhuyinComposer(private val source: CandidateSource) {
      * so an over-long phrase can't sneak in), then each shorter prefix down to
      * the first syllable, each tagged with exactly how much it consumes.
      */
-    fun snapshot(): ZhuyinComposerState {
+    fun snapshot(): ComposerState {
         val reading = buffer.toString()
-        if (reading.isEmpty()) return ZhuyinComposerState.EMPTY
+        if (reading.isEmpty()) return ComposerState.EMPTY
 
         val segments = ZhuyinSyllable.segment(reading)
         if (segments.size <= 1) {
-            val cands = source.candidates(reading).map { ZhuyinCandidate(it, reading.length) }
-            return ZhuyinComposerState(reading, cands)
+            val cands = source.candidates(reading).map { ComposerCandidate(it, reading.length) }
+            return ComposerState(reading, cands)
         }
 
         // Multi-syllable: whole buffer first, then shrinking prefixes so the user
         // can commit a leading phrase/char and keep the rest. De-dupe by text,
         // first (longest) occurrence winning.
-        val byText = LinkedHashMap<String, ZhuyinCandidate>()
+        val byText = LinkedHashMap<String, ComposerCandidate>()
         for (k in segments.size downTo 1) {
             val prefix = segments.subList(0, k).joinToString("")
             val consumed = prefix.length
             for (word in source.candidatesExact(prefix)) {
-                byText.getOrPut(word) { ZhuyinCandidate(word, consumed) }
+                byText.getOrPut(word) { ComposerCandidate(word, consumed) }
             }
         }
-        return ZhuyinComposerState(reading, byText.values.toList())
+        return ComposerState(reading, byText.values.toList())
     }
 
     companion object {
@@ -134,29 +101,4 @@ class ZhuyinComposer(private val source: CandidateSource) {
             code in BOPOMOFO_START..BOPOMOFO_END ||
                 (code <= Char.MAX_VALUE.code && code.toChar() in TONE_MARKS)
     }
-}
-
-/**
- * Implemented by a view model that supports Zhuyin composition, so the
- * candidate-bar UI can observe state and report taps without knowing the
- * concrete view model type.
- */
-interface ZhuyinComposerHost {
-    val composerStateFlow: StateFlow<ZhuyinComposerState>
-
-    /** User tapped a candidate in the bar. */
-    fun onCandidateSelected(candidate: ZhuyinCandidate)
-}
-
-/**
- * Implemented by the InputMethodService. The view model drives the actual
- * InputConnection pre-edit / commit through this, so composition state stays in
- * the view model and only the IC calls live in the service.
- */
-interface ZhuyinImeActions {
-    /** Set (or, on empty text, finish) the underlined composing region. */
-    fun onComposingChanged(composing: CharSequence)
-
-    /** Commit a chosen candidate and end the current composition. */
-    fun onCommitCandidate(text: CharSequence)
 }

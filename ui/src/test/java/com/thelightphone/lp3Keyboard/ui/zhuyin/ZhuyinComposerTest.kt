@@ -1,5 +1,6 @@
 package com.thelightphone.lp3Keyboard.ui.zhuyin
 
+import com.thelightphone.lp3Keyboard.ui.composer.ComposerState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -9,11 +10,11 @@ class ZhuyinComposerTest {
 
     private fun composer() = ZhuyinComposer(StubCandidateSource())
 
-    private fun ZhuyinComposerState.texts() = candidates.map { it.text }
+    private fun ComposerState.texts() = candidates.map { it.text }
 
     @Test
     fun `empty buffer yields empty state`() {
-        assertEquals(ZhuyinComposerState.EMPTY, composer().snapshot())
+        assertEquals(ComposerState.EMPTY, composer().snapshot())
     }
 
     @Test
@@ -71,7 +72,7 @@ class ZhuyinComposerTest {
         val phrase = c.snapshot().candidates.first { it.text == "你好" }
         val after = c.commit(phrase.consumed)
         assertTrue(c.isEmpty)
-        assertEquals(ZhuyinComposerState.EMPTY, after)
+        assertEquals(ComposerState.EMPTY, after)
     }
 
     @Test
@@ -102,7 +103,7 @@ class ZhuyinComposerTest {
         "ㄉㄚˋ".forEach { c.append(it) }
         c.clear()
         assertTrue(c.isEmpty)
-        assertEquals(ZhuyinComposerState.EMPTY, c.snapshot())
+        assertEquals(ComposerState.EMPTY, c.snapshot())
     }
 
     @Test
